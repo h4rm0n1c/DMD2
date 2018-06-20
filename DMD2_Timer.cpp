@@ -33,6 +33,8 @@
 
 //#define NO_TIMERS
 
+#define ESP8266_TIMER0_TICKS microsecondsToClockCycles(1000) // 1000 microseconds between calls to scan_running_dmds seems to work well.
+
 #ifdef NO_TIMERS
 
 // Timer-free stub code which gets compiled in only if NO_TIMERS is set
@@ -90,7 +92,7 @@ void BaseDMD::end()
   scanDisplay();
 }
 
-#else // __ARM__, Due assumed for now
+#elif defined (__arm__) // __ARM__, Due assumed for now
 
 /* ARM timer callback (ISR context), checks timer status then scans all running DMDs */
 void TC7_Handler(){
@@ -124,6 +126,31 @@ void BaseDMD::end()
     NVIC_EnableIRQ(TC7_IRQn); // Still some DMDs running
   else
     TC_Stop(TC2, 1);
+  clearScreen();
+  scanDisplay();
+}
+
+#elif defined (ESP8266)
+
+void BaseDMD::begin()
+{
+  beginNoTimer();
+  timer0_detachInterrupt();
+  
+  register_running_dmd(this);
+  
+  timer0_isr_init();
+  timer0_attachInterrupt(scan_running_dmds);
+  timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
+}
+
+void BaseDMD::end()
+{
+  bool still_running = unregister_running_dmd(this);
+  if(!still_running)
+  {
+    timer0_detachInterrupt(); // timer0 disables itself when the CPU cycle count reaches its own value, hence ESP.getCycleCount()
+  }
   clearScreen();
   scanDisplay();
 }
@@ -191,6 +218,9 @@ static void inline __attribute__((always_inline)) scan_running_dmds()
       next->scanDisplay();
     }
   }
+#if defined (ESP8266) && !defined (NO_TIMERS)
+  timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
+#endif
 }
 
 
