@@ -25,6 +25,8 @@
 #ifndef DMD2_H
 #define DMD2_H
 
+#include <stdint.h>
+
 #include "Print.h"
 #include "SPI.h"
 
@@ -107,6 +109,10 @@ class DMDFrame
 
   // Get status of a single LED
   bool getPixel(unsigned int x, unsigned int y);
+
+  // Directly access packed framebuffer bytes
+  uint8_t getByte(unsigned int row, unsigned int column);
+  void setByte(unsigned int row, unsigned int column, uint8_t value);
 
   // Move a region of pixels from one area to another
   void movePixels(unsigned int from_x, unsigned int from_y,
@@ -200,7 +206,7 @@ class DMDFrame
 
   template<typename T> inline void clamp_xy(T &x, T&y) {
     clamp(x, (T)0, (T)width-1);
-    clamp(y, (T)0, (T)width-1);
+    clamp(y, (T)0, (T)height-1);
   }
 };
 
@@ -257,8 +263,12 @@ public:
   /* Set the "other CS" pin that is checked for in use before scanning the DMD */
   void setOtherCS(byte pin_other_cs) { this->pin_other_cs = pin_other_cs; }
 
+  static void setSPIFrequency(uint32_t frequency_hz);
+  static uint32_t getSPIFrequency();
+
 protected:
   void writeSPIData(volatile uint8_t *rows[4], const int rowsize);
+  static uint32_t spi_frequency;
 };
 
 #ifdef ESP8266

@@ -20,6 +20,12 @@
 */
 #include "DMD2.h"
 
+#ifdef ESP8266
+#include <Arduino.h>
+#include <Schedule.h>
+#include <Ticker.h>
+#endif
+
 /*
   Uncomment the following line if you don't want DMD library to touch
   any timer functionality (ie if you want to use TimerOne library or
@@ -33,7 +39,7 @@
 
 //#define NO_TIMERS
 
-#define ESP8266_TIMER0_TICKS microsecondsToClockCycles(250) // 250 microseconds between calls to scan_running_dmds seems to works better than 1000.
+#define ESP8266_REFRESH_INTERVAL_US 250 // 250 microseconds between calls to scan_running_dmds seems to works better than 1000.
 
 #ifdef NO_TIMERS
 
@@ -54,6 +60,7 @@ static void inline scan_running_dmds();
 
 #ifdef ESP8266
 static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
+static void esp8266_service_scan();
 #endif
 
 #ifdef __AVR__
@@ -136,16 +143,34 @@ void BaseDMD::end()
 
 #elif defined (ESP8266)
 
+static Ticker esp8266_refresh_ticker;
+static volatile bool esp8266_scan_pending = false;
+static bool esp8266_refresh_running = false;
+
+static void start_esp8266_refresh_timer()
+{
+  if(!esp8266_refresh_running)
+  {
+    esp8266_refresh_ticker.attach_us(ESP8266_REFRESH_INTERVAL_US, esp8266_ISR_wrapper);
+    esp8266_refresh_running = true;
+  }
+}
+
+static void stop_esp8266_refresh_timer()
+{
+  if(esp8266_refresh_running)
+  {
+    esp8266_refresh_ticker.detach();
+    esp8266_refresh_running = false;
+    esp8266_scan_pending = false;
+  }
+}
+
 void BaseDMD::begin()
 {
   beginNoTimer();
-  timer0_detachInterrupt();
-
   register_running_dmd(this);
-
-  timer0_isr_init();
-  timer0_attachInterrupt(esp8266_ISR_wrapper);
-  timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
+  start_esp8266_refresh_timer();
 }
 
 void BaseDMD::end()
@@ -153,7 +178,7 @@ void BaseDMD::end()
   bool still_running = unregister_running_dmd(this);
   if(!still_running)
   {
-    timer0_detachInterrupt(); // timer0 disables itself when the CPU cycle count reaches its own value, hence ESP.getCycleCount()
+    stop_esp8266_refresh_timer();
   }
   clearScreen();
   scanDisplay();
@@ -217,10 +242,17 @@ static bool unregister_running_dmd(BaseDMD *dmd)
 #ifdef ESP8266
 static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
 {
-  if(((int)0x40200000)) { //Make sure flash isn't being accessed.
-    scan_running_dmds();
+  if(!esp8266_scan_pending)
+  {
+    esp8266_scan_pending = true;
+    schedule_function(esp8266_service_scan);
   }
-  timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
+}
+
+static void esp8266_service_scan()
+{
+  esp8266_scan_pending = false;
+  scan_running_dmds();
 }
 #endif
 

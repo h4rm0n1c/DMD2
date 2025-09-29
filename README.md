@@ -4,6 +4,13 @@ DMD2 is an Arduino library designed as an updated replacement for the [original 
 
 If you find any bugs, please use the Issues feature in github to report them or [post on the Freetronics Dot Matrix Display forum](http://forum.freetronics.com/viewforum.php?f=26).
 
+## 2025 refresh highlights
+
+* **ESP8266 stability** – Display refresh is now scheduled cooperatively on ESP8266 hardware rather than running the full scan from the timer0 interrupt. This keeps the WiFi stack responsive and prevents the watchdog resets that previously occurred whenever networking and DMD2 were active together.
+* **Shared SPI bus friendliness** – `SPIDMD` refreshes now run inside standard Arduino SPI transactions so they can safely coexist with other peripherals that also negotiate bus ownership.
+* **Direct framebuffer accessors** – New `DMDFrame::getByte()` and `DMDFrame::setByte()` helpers expose the packed row data, which is handy for bulk animation effects and font streaming without reimplementing the pixel layout logic.
+* **Adjustable SPI frequency** – Sketches can customise the refresh clock via `SPIDMD::setSPIFrequency()` when working with unusually long ribbon cables or particularly fast boards.
+
 # Changes from DMD library
 
 The DMD2 library includes the following new features:
@@ -38,11 +45,32 @@ More documentation will be produced before the library reaches final release rat
 
 Feel free to ask [questions on the forum](http://forum.freetronics.com/viewforum.php?f=26) if things don't work.
 
+## Sharing the SPI bus with other devices
+
+From this release onward DMD2 wraps every panel refresh in an Arduino SPI transaction. Sketches that also talk to other SPI peripherals should continue to bracket their own transfers with `SPI.beginTransaction(...)`/`SPI.endTransaction()` so the core can coordinate safe access between devices.
+
+If you need to slow the DMD down for long cable runs or speed it up on faster boards, call `SPIDMD::setSPIFrequency(hz)` before `begin()` – the default is 4&nbsp;MHz on AVR/ESP8266 and 4.2&nbsp;MHz on ARM boards:
+
+```c++
+SPIDMD dmd(1, 1);
+dmd.setSPIFrequency(2000000); // 2 MHz for really long cables
+dmd.begin();
+```
+
 # ESP8266 Support
 
 Thanks to @h4rm0n1c there is support for DMD2 on ESP8266 using the Arduino environment. See [this comment](https://github.com/freetronics/DMD2/pull/7#issue-97282971) for an explanation of using DMD2 on ESP8266.
 
+With the 2025 refresh the ESP8266 backend now uses the core `Ticker` scheduler to post refresh work back to the cooperative loop, keeping the WiFi stack responsive. No code changes are required in sketches; the panel will continue to refresh automatically as before, but without triggering watchdog resets when WiFi or the built-in HTTP server are active.
+
+Brightness scaling is also aligned with the rest of the library: `analogWriteRange(255)` is applied once when the panel starts so the 0–255 values passed to `setBrightness()` map linearly to PWM duty cycle.
+
 Freetronics is unable to guarantee support for DMD2 on ESP8266, but we will try and help if we can.
+
+## Acknowledgements
+
+* Cooperative refresh scheduling was inspired by community reports in the ESP8266 issue tracker.
+* The raw framebuffer helpers are based on the excellent groundwork from [@crackwitz](https://github.com/crackwitz/DMD2)'s fork.
 
 # About the Makefiles
 

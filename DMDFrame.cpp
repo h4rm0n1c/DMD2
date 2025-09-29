@@ -105,6 +105,20 @@ bool DMDFrame::getPixel(unsigned int x, unsigned int y)
   return res;
 }
 
+uint8_t DMDFrame::getByte(unsigned int row, unsigned int column)
+{
+  if(row >= height || column >= unified_width_bytes())
+    return 0xFF;
+  return bitmap[row * unified_width_bytes() + column];
+}
+
+void DMDFrame::setByte(unsigned int row, unsigned int column, uint8_t value)
+{
+  if(row >= height || column >= unified_width_bytes())
+    return;
+  bitmap[row * unified_width_bytes() + column] = value;
+}
+
 void DMDFrame::debugPixelLine(unsigned int y, char *buf) { // buf must be large enough (2x pixels+EOL+nul), or we'll overrun
   char *currentPixel = buf;
   for(int x=0;x < width;x++) {

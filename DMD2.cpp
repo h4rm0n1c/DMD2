@@ -22,6 +22,14 @@
 // Port registers are same size as a pointer (16-bit on AVR, 32-bit on ARM)
 typedef intptr_t port_reg_t;
 
+#if defined(__arm__)
+static const uint32_t DMD2_DEFAULT_SPI_FREQUENCY = 4200000;
+#else
+static const uint32_t DMD2_DEFAULT_SPI_FREQUENCY = 4000000;
+#endif
+
+uint32_t SPIDMD::spi_frequency = DMD2_DEFAULT_SPI_FREQUENCY;
+
 SPIDMD::SPIDMD(byte panelsWide, byte panelsHigh)
 #ifdef ESP8266
   : BaseDMD(panelsWide, panelsHigh, 15, 16, 12, 0)
@@ -39,22 +47,13 @@ SPIDMD::SPIDMD(byte panelsWide, byte panelsHigh, byte pin_noe, byte pin_a, byte 
 
 void SPIDMD::beginNoTimer()
 {
-  // Configure SPI before initialising the base DMD
   SPI.begin();
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setDataMode(SPI_MODE0);	// CPOL=0, CPHA=0
-#ifdef __AVR__
-  SPI.setClockDivider(SPI_CLOCK_DIV4); // 4MHz clock. 8MHz (DIV2 not DIV4) is possible if you have short cables. Longer cables may need DIV8/DIV16.
-#elif defined(ESP8266)
-  SPI.setFrequency(4000000); // ESP can run at 80mhz or 160mhz, setting frequency directly is easier, set to 4MHz.
-#else
-  SPI.setClockDivider(20); // 4.2MHz on Due. Same comment as above applies (lower numbers = less divider = faster speeds.)
-#endif
   BaseDMD::beginNoTimer();
 }
 
 void SPIDMD::writeSPIData(volatile uint8_t *rows[4], const int rowsize)
 {
+  SPI.beginTransaction(SPISettings(spi_frequency, MSBFIRST, SPI_MODE0));
   /* We send out interleaved data for 4 rows at a time */
   for(int i = 0; i < rowsize; i++) {
     SPI.transfer(*(rows[3]++));
@@ -62,6 +61,19 @@ void SPIDMD::writeSPIData(volatile uint8_t *rows[4], const int rowsize)
     SPI.transfer(*(rows[1]++));
     SPI.transfer(*(rows[0]++));
   }
+  SPI.endTransaction();
+}
+
+void SPIDMD::setSPIFrequency(uint32_t frequency_hz)
+{
+  if(frequency_hz == 0)
+    frequency_hz = 1;
+  spi_frequency = frequency_hz;
+}
+
+uint32_t SPIDMD::getSPIFrequency()
+{
+  return spi_frequency;
 }
 
 void BaseDMD::scanDisplay()
@@ -183,6 +195,13 @@ BaseDMD::BaseDMD(byte panelsWide, byte panelsHigh, byte pin_noe, byte pin_a, byt
 
 void BaseDMD::beginNoTimer()
 {
+#ifdef ESP8266
+  static bool pwm_range_configured = false;
+  if(!pwm_range_configured) {
+    analogWriteRange(255);
+    pwm_range_configured = true;
+  }
+#endif
   digitalWrite(pin_noe, LOW);
   pinMode(pin_noe, OUTPUT);
 
