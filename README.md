@@ -63,6 +63,12 @@ Thanks to @h4rm0n1c there is support for DMD2 on ESP8266 using the Arduino envir
 
 With the 2025 refresh the ESP8266 backend now uses the core `Ticker` scheduler to post refresh work back to the cooperative loop, keeping the WiFi stack responsive. No code changes are required in sketches; the panel will continue to refresh automatically as before, but without triggering watchdog resets when WiFi or the built-in HTTP server are active.
 
+### Cooperative refresh and watchdog safety
+
+* DMD refreshes now run outside of the timer ISR, so the ESP8266 watchdog is serviced while WiFi and HTTP server callbacks execute.
+* The library automatically yields control via the SDK scheduler, preventing the `WDT reset` crashes that previously occurred when network traffic and panel scanning overlapped.
+* Existing sketches can continue to call `dmd.loop()` from `loop()` if they need deterministic timing; the cooperative scheduler will still manage the hardware refresh cadence.
+
 Brightness scaling is also aligned with the rest of the library: `analogWriteRange(255)` is applied once when the panel starts so the 0–255 values passed to `setBrightness()` map linearly to PWM duty cycle.
 
 Freetronics is unable to guarantee support for DMD2 on ESP8266, but we will try and help if we can.
