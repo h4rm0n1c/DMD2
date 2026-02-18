@@ -41,6 +41,10 @@
 #define DMD2_ESP8266_SCAN_DIVIDER 2 // Scan once every N timer ticks to reduce ISR load.
 #endif
 
+#ifndef DMD2_ESP8266_MAX_SCANS_PER_SERVICE
+#define DMD2_ESP8266_MAX_SCANS_PER_SERVICE 2 // Prevent burst starvation in loop context.
+#endif
+
 #define ESP8266_TIMER0_TICKS microsecondsToClockCycles(DMD2_ESP8266_REFRESH_US)
 
 #ifdef NO_TIMERS
@@ -53,6 +57,9 @@ void BaseDMD::begin() {
 void BaseDMD::end() {
 }
 
+void BaseDMD::serviceAll() {
+}
+
 #else // Use timers
 
 // Forward declarations for tracking currently running DMDs
@@ -63,6 +70,7 @@ static void inline scan_running_dmds();
 #ifdef ESP8266
 static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
 static volatile uint8_t esp8266_isr_divider = 0;
+static volatile uint8_t esp8266_scan_pending = 0;
 #endif
 
 #ifdef __AVR__
@@ -155,6 +163,7 @@ void BaseDMD::begin()
   interrupts();
 
   esp8266_isr_divider = 0;
+  esp8266_scan_pending = 0;
   timer0_isr_init();
   timer0_attachInterrupt(esp8266_ISR_wrapper);
   timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
@@ -234,11 +243,32 @@ static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
   esp8266_isr_divider++;
   if(esp8266_isr_divider >= DMD2_ESP8266_SCAN_DIVIDER) {
     esp8266_isr_divider = 0;
-    scan_running_dmds();
+    if(esp8266_scan_pending < 0xFF)
+      esp8266_scan_pending++;
   }
   timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
 }
 #endif
+
+
+void BaseDMD::serviceAll()
+{
+#ifdef ESP8266
+  uint8_t pending = 0;
+
+  noInterrupts();
+  pending = esp8266_scan_pending;
+  if(pending > DMD2_ESP8266_MAX_SCANS_PER_SERVICE)
+    pending = DMD2_ESP8266_MAX_SCANS_PER_SERVICE;
+  esp8266_scan_pending -= pending;
+  interrupts();
+
+  while(pending--)
+    scan_running_dmds();
+#else
+  // Non-ESP8266 targets either scan from ISR or by manual scanDisplay().
+#endif
+}
 
 // This method is called from timer ISR to scan all the DMD instances present in the running sketch
 static void inline __attribute__((always_inline)) scan_running_dmds()

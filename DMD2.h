@@ -227,6 +227,9 @@ public:
   /* Start display, but use manual scanning */
   virtual void beginNoTimer();
 
+  /* Service pending timer-driven scans in normal task/loop context. */
+  static void serviceAll();
+
   inline void setBrightness(byte level) {
     this->brightness = level;
     this->brightness_changed = true;

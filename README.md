@@ -61,3 +61,6 @@ For dedicated DMD/P10 deployments (single display chain, no SPI-CS sharing), you
 
 - Set `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1` at compile time.
 - Leave it at the default (`0`) if your sketch relies on `setOtherCS()` arbitration behavior.
+
+
+For ESP8266 builds that defer scan work from ISR, call `BaseDMD::serviceAll()` frequently from `loop()` to service pending refresh ticks in normal task context.

@@ -83,8 +83,9 @@ The following sequence preserves public API and expected behavior while reducing
    - Keep lock window minimal; avoid allocating under lock if possible.
 
 3. **Rate-limit ISR scan work**
-   - Add an ESP8266 scan divider (`DMD2_ESP8266_SCAN_DIVIDER`) so not every timer tick performs a full scan.
-   - This keeps timer cadence stable while reducing worst-case ISR occupancy.
+   - Add an ESP8266 scan divider (`DMD2_ESP8266_SCAN_DIVIDER`) so not every timer tick schedules a scan.
+   - ISR only increments a pending counter and re-arms timer0.
+   - `BaseDMD::serviceAll()` consumes pending scans in normal loop context with a cap (`DMD2_ESP8266_MAX_SCANS_PER_SERVICE`).
 
 4. **Skip `pin_other_cs` polling when not needed**
    - For dedicated DMD/P10 chains that do not use `setOtherCS()`, compile with `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1`.
