@@ -227,7 +227,10 @@ public:
   /* Start display, but use manual scanning */
   virtual void beginNoTimer();
 
-  inline void setBrightness(byte level) { this->brightness = level; };
+  inline void setBrightness(byte level) {
+    this->brightness = level;
+    this->brightness_changed = true;
+  };
 protected:
   volatile byte scan_row;
   byte pin_noe;
@@ -239,6 +242,9 @@ protected:
   int8_t pin_other_cs; // CS pin to check before SPI behaviour, only makes sense for SPIDMD
 
   uint8_t brightness;
+  uint8_t pwm_brightness;
+  bool pwm_active;
+  bool brightness_changed;
 
 };
 

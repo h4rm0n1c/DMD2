@@ -96,10 +96,28 @@ void BaseDMD::scanDisplay()
   scan_row = (scan_row + 1) % 4;
 
   // Output enable pin is either fixed on, or PWMed for a variable brightness display
-  if(brightness == 255)
+  uint8_t current_brightness = brightness;
+#ifdef ESP8266
+  if(current_brightness == 255) {
+    digitalWrite(pin_noe, HIGH); // Fast path for full brightness.
+    pwm_active = false;
+  }
+  else if(current_brightness == 0) {
+    digitalWrite(pin_noe, LOW); // Fast path for display off.
+    pwm_active = false;
+  }
+  else if(brightness_changed || !pwm_active || pwm_brightness != current_brightness) {
+    analogWrite(pin_noe, current_brightness); // Reconfigure PWM only when brightness changes.
+    pwm_brightness = current_brightness;
+    pwm_active = true;
+    brightness_changed = false;
+  }
+#else
+  if(current_brightness == 255)
     digitalWrite(pin_noe, HIGH);
   else
-    analogWrite(pin_noe, brightness);
+    analogWrite(pin_noe, current_brightness);
+#endif
 }
 
 #ifdef ESP8266
@@ -177,7 +195,10 @@ BaseDMD::BaseDMD(byte panelsWide, byte panelsHigh, byte pin_noe, byte pin_a, byt
   default_pins(pin_noe == 9 && pin_a == 6 && pin_b == 7 && pin_sck == 8),
 #endif
   pin_other_cs(-1),
-  brightness(255)
+  brightness(255),
+  pwm_brightness(255),
+  pwm_active(false),
+  brightness_changed(true)
 {
 }
 
@@ -194,6 +215,10 @@ void BaseDMD::beginNoTimer()
 
   digitalWrite(pin_sck, LOW);
   pinMode(pin_sck, OUTPUT);
+
+  pwm_active = false;
+  pwm_brightness = brightness;
+  brightness_changed = true;
 
   clearScreen();
   scanDisplay();
