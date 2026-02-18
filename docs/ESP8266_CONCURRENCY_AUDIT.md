@@ -87,15 +87,20 @@ The following sequence preserves public API and expected behavior while reducing
    - ISR only increments a pending counter and re-arms timer0.
    - `BaseDMD::serviceAll()` consumes pending scans in normal loop context with a cap (`DMD2_ESP8266_MAX_SCANS_PER_SERVICE`).
 
-4. **Skip `pin_other_cs` polling when not needed**
+4. **Adaptive timer interval with fixed-mode escape hatch**
+   - Use `DMD2_ESP8266_REFRESH_US` as floor and adjust interval from measured scan cycles.
+   - Clamp with `DMD2_ESP8266_REFRESH_MAX_US` to avoid unbounded slowdown.
+   - Set `DMD2_ESP8266_ADAPTIVE_INTERVAL=0` for deterministic fixed cadence.
+
+5. **Skip `pin_other_cs` polling when not needed**
    - For dedicated DMD/P10 chains that do not use `setOtherCS()`, compile with `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1`.
    - Removes per-scan `digitalRead()` overhead in the refresh hot path.
 
-5. **Raise default refresh period or make it adaptive**
+6. **Raise default refresh period or make it adaptive**
    - Start at 500-1000us default on ESP8266.
    - Optionally skip scans when previous scan overran budget.
 
-6. **Remove invalid flash guard**
+7. **Remove invalid flash guard**
    - Replace with real mechanism or delete to avoid misleading behavior.
 
 ### Phase 2 (still compatibility-preserving)

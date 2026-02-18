@@ -45,7 +45,16 @@
 #define DMD2_ESP8266_MAX_SCANS_PER_SERVICE 2 // Prevent burst starvation in loop context.
 #endif
 
+#ifndef DMD2_ESP8266_ADAPTIVE_INTERVAL
+#define DMD2_ESP8266_ADAPTIVE_INTERVAL 1 // Set to 0 to keep deterministic fixed refresh interval.
+#endif
+
+#ifndef DMD2_ESP8266_REFRESH_MAX_US
+#define DMD2_ESP8266_REFRESH_MAX_US 4000 // Adaptive upper bound for heavily loaded redraw paths.
+#endif
+
 #define ESP8266_TIMER0_TICKS microsecondsToClockCycles(DMD2_ESP8266_REFRESH_US)
+#define ESP8266_TIMER0_MAX_TICKS microsecondsToClockCycles(DMD2_ESP8266_REFRESH_MAX_US)
 
 #ifdef NO_TIMERS
 
@@ -71,6 +80,7 @@ static void inline scan_running_dmds();
 static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
 static volatile uint8_t esp8266_isr_divider = 0;
 static volatile uint8_t esp8266_scan_pending = 0;
+static volatile uint32_t esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
 #endif
 
 #ifdef __AVR__
@@ -164,9 +174,10 @@ void BaseDMD::begin()
 
   esp8266_isr_divider = 0;
   esp8266_scan_pending = 0;
+  esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
   timer0_isr_init();
   timer0_attachInterrupt(esp8266_ISR_wrapper);
-  timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
+  timer0_write(ESP.getCycleCount() + esp8266_timer_interval_ticks);
 }
 
 void BaseDMD::end()
@@ -246,7 +257,27 @@ static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
     if(esp8266_scan_pending < 0xFF)
       esp8266_scan_pending++;
   }
-  timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
+  timer0_write(ESP.getCycleCount() + esp8266_timer_interval_ticks);
+}
+#endif
+
+
+#ifdef ESP8266
+static void inline update_esp8266_refresh_interval(uint32_t scan_cycles)
+{
+#if DMD2_ESP8266_ADAPTIVE_INTERVAL
+  uint32_t next_ticks = scan_cycles + (scan_cycles >> 2); // ~25% timing headroom above observed scan cost.
+  if(next_ticks < ESP8266_TIMER0_TICKS)
+    next_ticks = ESP8266_TIMER0_TICKS;
+  if(next_ticks > ESP8266_TIMER0_MAX_TICKS)
+    next_ticks = ESP8266_TIMER0_MAX_TICKS;
+
+  uint32_t current_ticks = esp8266_timer_interval_ticks;
+  esp8266_timer_interval_ticks = ((current_ticks * 3) + next_ticks) >> 2; // smooth interval changes.
+#else
+  (void)scan_cycles;
+  esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
+#endif
 }
 #endif
 
@@ -263,8 +294,26 @@ void BaseDMD::serviceAll()
   esp8266_scan_pending -= pending;
   interrupts();
 
-  while(pending--)
+  if(!pending) {
+#if DMD2_ESP8266_ADAPTIVE_INTERVAL
+    // Ease back toward floor when workload calms down.
+    uint32_t current_ticks = esp8266_timer_interval_ticks;
+    if(current_ticks > ESP8266_TIMER0_TICKS) {
+      uint32_t delta = (current_ticks - ESP8266_TIMER0_TICKS) >> 3;
+      if(!delta)
+        delta = 1;
+      esp8266_timer_interval_ticks = current_ticks - delta;
+    }
+#endif
+    return;
+  }
+
+  while(pending--) {
+    uint32_t scan_start = ESP.getCycleCount();
     scan_running_dmds();
+    uint32_t scan_cycles = ESP.getCycleCount() - scan_start;
+    update_esp8266_refresh_interval(scan_cycles);
+  }
 #else
   // Non-ESP8266 targets either scan from ISR or by manual scanDisplay().
 #endif

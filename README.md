@@ -73,3 +73,12 @@ For sketches that perform heavy redraw/text scrolling while WiFiManager/captive 
 - Set `DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD=1` at compile time.
 - This enables `DMD2_ESP8266_COOPERATIVE_YIELD()` (calls `yield()` on ESP8266).
 - Default is disabled (`0`) to preserve maximum raw draw throughput.
+
+
+### ESP8266 adaptive timer interval (optional)
+
+The deferred-scan scheduler can adapt timer interval based on measured scan duration:
+
+- Floor: `DMD2_ESP8266_REFRESH_US`
+- Ceiling: `DMD2_ESP8266_REFRESH_MAX_US`
+- Disable adaptation for deterministic fixed cadence by setting `DMD2_ESP8266_ADAPTIVE_INTERVAL=0`.
