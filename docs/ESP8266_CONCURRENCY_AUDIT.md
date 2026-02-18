@@ -86,11 +86,15 @@ The following sequence preserves public API and expected behavior while reducing
    - Add an ESP8266 scan divider (`DMD2_ESP8266_SCAN_DIVIDER`) so not every timer tick performs a full scan.
    - This keeps timer cadence stable while reducing worst-case ISR occupancy.
 
-4. **Raise default refresh period or make it adaptive**
+4. **Skip `pin_other_cs` polling when not needed**
+   - For dedicated DMD/P10 chains that do not use `setOtherCS()`, compile with `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1`.
+   - Removes per-scan `digitalRead()` overhead in the refresh hot path.
+
+5. **Raise default refresh period or make it adaptive**
    - Start at 500-1000us default on ESP8266.
    - Optionally skip scans when previous scan overran budget.
 
-5. **Remove invalid flash guard**
+6. **Remove invalid flash guard**
    - Replace with real mechanism or delete to avoid misleading behavior.
 
 ### Phase 2 (still compatibility-preserving)

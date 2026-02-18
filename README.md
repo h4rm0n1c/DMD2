@@ -53,3 +53,11 @@ However, if you want to use other development tools with the DMD library, the Ma
 ## ESP8266 note
 
 For ESP8266 Wi-Fi/WDT concurrency analysis and optimization guidance, see `docs/ESP8266_CONCURRENCY_AUDIT.md`.
+
+
+### ESP8266 optional `pin_other_cs` optimization
+
+For dedicated DMD/P10 deployments (single display chain, no SPI-CS sharing), you can disable runtime `pin_other_cs` polling on ESP8266 to shave hot-path GPIO overhead:
+
+- Set `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1` at compile time.
+- Leave it at the default (`0`) if your sketch relies on `setOtherCS()` arbitration behavior.

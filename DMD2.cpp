@@ -19,6 +19,12 @@
 */
 #include "DMD2.h"
 
+#if defined(ESP8266)
+#ifndef DMD2_ESP8266_DISABLE_OTHER_CS_CHECK
+#define DMD2_ESP8266_DISABLE_OTHER_CS_CHECK 0
+#endif
+#endif
+
 // Port registers are same size as a pointer (16-bit on AVR, 32-bit on ARM)
 typedef intptr_t port_reg_t;
 
@@ -66,8 +72,16 @@ void SPIDMD::writeSPIData(volatile uint8_t *rows[4], const int rowsize)
 
 void BaseDMD::scanDisplay()
 {
-  if(pin_other_cs >= 0 && digitalRead(pin_other_cs) != HIGH)
+#if defined(ESP8266) && DMD2_ESP8266_DISABLE_OTHER_CS_CHECK
+  // Dedicated DMD/P10 deployments can disable CS polling entirely.
+#else
+  if(pin_other_cs < 0) {
+    // Common dedicated-DMD setup, skip CS pin reads entirely.
+  }
+  else if(digitalRead(pin_other_cs) != HIGH) {
     return;
+  }
+#endif
   // Rows are send out in 4 blocks of 4 (interleaved), across all panels
 
   int rowsize = unified_width_bytes();
