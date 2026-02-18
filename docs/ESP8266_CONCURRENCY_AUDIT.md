@@ -93,11 +93,11 @@ The following sequence preserves public API and expected behavior while reducing
    - Set `DMD2_ESP8266_ADAPTIVE_INTERVAL=0` for deterministic fixed cadence.
 
 5. **Skip `pin_other_cs` polling when not needed**
-   - For dedicated DMD/P10 chains that do not use `setOtherCS()`, compile with `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1`.
+   - Dedicated DMD/P10 chains default to `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1` to remove per-scan CS polling overhead.
    - Removes per-scan `digitalRead()` overhead in the refresh hot path.
 
 6. **Raise default refresh period or make it adaptive**
-   - Start at 500-1000us default on ESP8266.
+   - Default starts at 1000us on ESP8266 (lower ISR pressure, better Wi-Fi coexistence).
    - Optionally skip scans when previous scan overran budget.
 
 7. **Remove invalid flash guard**
@@ -122,7 +122,7 @@ The following sequence preserves public API and expected behavior while reducing
 
 1. Add opt-in compile-time flags:
    - `DMD2_ESP8266_DEFER_SCAN_FROM_ISR` (default ON)
-   - `DMD2_ESP8266_REFRESH_US` (default 500 or 1000)
+   - `DMD2_ESP8266_REFRESH_US` (default 1000)
    - `DMD2_ESP8266_FASTGPIO` (default ON for default pins)
 
 2. Add runtime setter (non-breaking):
@@ -132,7 +132,7 @@ The following sequence preserves public API and expected behavior while reducing
 
 - Timer ISR: set pending flag only.
 - `loop()` path: `dmd.service()` called frequently.
-- Refresh interval: 500-1000us baseline.
+- Refresh interval: 1000us baseline (adaptive mode can increase under load).
 - For 2+ panels or active Wi-Fi traffic: prefer 1000us and fast GPIO path.
 
 ## Notes on preserving compatibility

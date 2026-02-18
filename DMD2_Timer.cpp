@@ -34,7 +34,7 @@
 //#define NO_TIMERS
 
 #ifndef DMD2_ESP8266_REFRESH_US
-#define DMD2_ESP8266_REFRESH_US 500 // More Wi-Fi-friendly default cadence than 250us.
+#define DMD2_ESP8266_REFRESH_US 1000 // Default to lower refresh pressure for Wi-Fi/WDT stability.
 #endif
 
 #ifndef DMD2_ESP8266_SCAN_DIVIDER

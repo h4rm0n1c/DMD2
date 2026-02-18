@@ -60,7 +60,7 @@ For ESP8266 Wi-Fi/WDT concurrency analysis and optimization guidance, see `docs/
 For dedicated DMD/P10 deployments (single display chain, no SPI-CS sharing), you can disable runtime `pin_other_cs` polling on ESP8266 to shave hot-path GPIO overhead:
 
 - Set `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=1` at compile time.
-- Leave it at the default (`0`) if your sketch relies on `setOtherCS()` arbitration behavior.
+- Default is enabled (`1`) for dedicated DMD chains. Set `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=0` if your sketch relies on `setOtherCS()` arbitration behavior.
 
 
 For ESP8266 builds that defer scan work from ISR, call `BaseDMD::serviceAll()` frequently from `loop()` to service pending refresh ticks in normal task context.
@@ -79,6 +79,6 @@ For sketches that perform heavy redraw/text scrolling while WiFiManager/captive 
 
 The deferred-scan scheduler can adapt timer interval based on measured scan duration:
 
-- Floor: `DMD2_ESP8266_REFRESH_US`
+- Floor: `DMD2_ESP8266_REFRESH_US` (default `1000`)
 - Ceiling: `DMD2_ESP8266_REFRESH_MAX_US`
 - Disable adaptation for deterministic fixed cadence by setting `DMD2_ESP8266_ADAPTIVE_INTERVAL=0`.
