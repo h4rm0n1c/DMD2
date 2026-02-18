@@ -49,3 +49,7 @@ Freetronics is unable to guarantee support for DMD2 on ESP8266, but we will try 
 You'll notice the examples directory contains some files named `Makefile`. You can ignore these if you are using the Arduino IDE.
 
 However, if you want to use other development tools with the DMD library, the Makefiles work with with the [arduino-mk](http://www.mjoldfield.com/atelier/2009/02/arduino-cli.html) package, version 1.3.1. They may need updating to work with newer versions.
+
+## ESP8266 note
+
+For ESP8266 Wi-Fi/WDT concurrency analysis and optimization guidance, see `ESP8266_CONCURRENCY_AUDIT.md`.
