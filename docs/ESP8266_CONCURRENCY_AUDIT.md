@@ -82,11 +82,15 @@ The following sequence preserves public API and expected behavior while reducing
    - Wrap `register_running_dmd()` / `unregister_running_dmd()` callsites with interrupt lock (`noInterrupts()/interrupts()` or SDK critical section) on ESP8266.
    - Keep lock window minimal; avoid allocating under lock if possible.
 
-3. **Raise default refresh period or make it adaptive**
+3. **Rate-limit ISR scan work**
+   - Add an ESP8266 scan divider (`DMD2_ESP8266_SCAN_DIVIDER`) so not every timer tick performs a full scan.
+   - This keeps timer cadence stable while reducing worst-case ISR occupancy.
+
+4. **Raise default refresh period or make it adaptive**
    - Start at 500-1000us default on ESP8266.
    - Optionally skip scans when previous scan overran budget.
 
-4. **Remove invalid flash guard**
+5. **Remove invalid flash guard**
    - Replace with real mechanism or delete to avoid misleading behavior.
 
 ### Phase 2 (still compatibility-preserving)

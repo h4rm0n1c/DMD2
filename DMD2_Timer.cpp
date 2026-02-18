@@ -37,6 +37,10 @@
 #define DMD2_ESP8266_REFRESH_US 500 // More Wi-Fi-friendly default cadence than 250us.
 #endif
 
+#ifndef DMD2_ESP8266_SCAN_DIVIDER
+#define DMD2_ESP8266_SCAN_DIVIDER 2 // Scan once every N timer ticks to reduce ISR load.
+#endif
+
 #define ESP8266_TIMER0_TICKS microsecondsToClockCycles(DMD2_ESP8266_REFRESH_US)
 
 #ifdef NO_TIMERS
@@ -58,6 +62,7 @@ static void inline scan_running_dmds();
 
 #ifdef ESP8266
 static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
+static volatile uint8_t esp8266_isr_divider = 0;
 #endif
 
 #ifdef __AVR__
@@ -149,6 +154,7 @@ void BaseDMD::begin()
   register_running_dmd(this);
   interrupts();
 
+  esp8266_isr_divider = 0;
   timer0_isr_init();
   timer0_attachInterrupt(esp8266_ISR_wrapper);
   timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
@@ -225,7 +231,11 @@ static bool unregister_running_dmd(BaseDMD *dmd)
 #ifdef ESP8266
 static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
 {
-  scan_running_dmds();
+  esp8266_isr_divider++;
+  if(esp8266_isr_divider >= DMD2_ESP8266_SCAN_DIVIDER) {
+    esp8266_isr_divider = 0;
+    scan_running_dmds();
+  }
   timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
 }
 #endif
