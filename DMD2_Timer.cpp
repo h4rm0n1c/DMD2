@@ -33,7 +33,11 @@
 
 //#define NO_TIMERS
 
-#define ESP8266_TIMER0_TICKS microsecondsToClockCycles(250) // 250 microseconds between calls to scan_running_dmds seems to works better than 1000.
+#ifndef DMD2_ESP8266_REFRESH_US
+#define DMD2_ESP8266_REFRESH_US 500 // More Wi-Fi-friendly default cadence than 250us.
+#endif
+
+#define ESP8266_TIMER0_TICKS microsecondsToClockCycles(DMD2_ESP8266_REFRESH_US)
 
 #ifdef NO_TIMERS
 
@@ -141,7 +145,9 @@ void BaseDMD::begin()
   beginNoTimer();
   timer0_detachInterrupt();
 
+  noInterrupts();
   register_running_dmd(this);
+  interrupts();
 
   timer0_isr_init();
   timer0_attachInterrupt(esp8266_ISR_wrapper);
@@ -150,7 +156,9 @@ void BaseDMD::begin()
 
 void BaseDMD::end()
 {
+  noInterrupts();
   bool still_running = unregister_running_dmd(this);
+  interrupts();
   if(!still_running)
   {
     timer0_detachInterrupt(); // timer0 disables itself when the CPU cycle count reaches its own value, hence ESP.getCycleCount()
@@ -217,9 +225,7 @@ static bool unregister_running_dmd(BaseDMD *dmd)
 #ifdef ESP8266
 static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
 {
-  if(((int)0x40200000)) { //Make sure flash isn't being accessed.
-    scan_running_dmds();
-  }
+  scan_running_dmds();
   timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
 }
 #endif
