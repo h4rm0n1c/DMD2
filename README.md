@@ -52,4 +52,4 @@ However, if you want to use other development tools with the DMD library, the Ma
 
 ## ESP8266 note
 
-For ESP8266 Wi-Fi/WDT concurrency analysis and optimization guidance, see `ESP8266_CONCURRENCY_AUDIT.md`.
+For ESP8266 Wi-Fi/WDT concurrency analysis and optimization guidance, see `docs/ESP8266_CONCURRENCY_AUDIT.md`.
