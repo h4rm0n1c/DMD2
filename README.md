@@ -64,3 +64,12 @@ For dedicated DMD/P10 deployments (single display chain, no SPI-CS sharing), you
 
 
 For ESP8266 builds that defer scan work from ISR, call `BaseDMD::serviceAll()` frequently from `loop()` to service pending refresh ticks in normal task context.
+
+
+### ESP8266 optional cooperative yield hook
+
+For sketches that perform heavy redraw/text scrolling while WiFiManager/captive portal is active, you can enable cooperative yielding in library hot loops:
+
+- Set `DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD=1` at compile time.
+- This enables `DMD2_ESP8266_COOPERATIVE_YIELD()` (calls `yield()` on ESP8266).
+- Default is disabled (`0`) to preserve maximum raw draw throughput.

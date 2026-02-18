@@ -224,6 +224,7 @@ void DMDFrame::drawFilledBox(unsigned int x1, unsigned int y1, unsigned int x2, 
 {
   for (unsigned int b = x1; b <= x2; b++) {
     drawLine(b, y1, b, y2, mode);
+    DMD2_ESP8266_COOPERATIVE_YIELD();
   }
 }
 
@@ -240,6 +241,8 @@ void DMDFrame::scrollY(int scrollBy) {
     movePixels(0, 0, 0, scrollBy, width, height - scrollBy);
     drawFilledBox(0, 0, width, scrollBy, GRAPHICS_OFF);
   }
+
+  DMD2_ESP8266_COOPERATIVE_YIELD();
 }
 
 
@@ -256,6 +259,8 @@ void DMDFrame::scrollX(int scrollBy) {
     movePixels(0, 0, scrollBy, 0, width - scrollBy, height);
     drawFilledBox(0, 0, scrollBy, height, GRAPHICS_OFF);
   }
+
+  DMD2_ESP8266_COOPERATIVE_YIELD();
 }
 
 void DMDFrame::marqueeScrollX(int scrollBy) {
@@ -310,6 +315,7 @@ DMDFrame DMDFrame::subFrame(unsigned int left, unsigned int top, unsigned int wi
       for(unsigned int to_x = 0; to_x < width; to_x++) {
         bool val = this->getPixel(to_x+left,to_y+top);
         result.setPixel(to_x,to_y,val ? GRAPHICS_ON : GRAPHICS_OFF);
+        DMD2_ESP8266_COOPERATIVE_YIELD();
       }
     }
   }
@@ -333,6 +339,7 @@ void DMDFrame::copyFrame(DMDFrame &from, unsigned int left, unsigned int top)
       unsigned int from_byte = from.pixelToBitmapIndex(0, from_y);
       for(unsigned int to_byte = pixelToBitmapIndex(left,to_y); to_byte < to_end; to_byte++) {
         this->bitmap[to_byte] = from.bitmap[from_byte++];
+        DMD2_ESP8266_COOPERATIVE_YIELD();
       }
       from_y++;
     }
@@ -343,6 +350,7 @@ void DMDFrame::copyFrame(DMDFrame &from, unsigned int left, unsigned int top)
       for(unsigned int from_x = 0; from_x < from.width; from_x++) {
         bool val = from.getPixel(from_x,from_y);
         this->setPixel(from_x + left, from_y + top, val ? GRAPHICS_ON : GRAPHICS_OFF);
+        DMD2_ESP8266_COOPERATIVE_YIELD();
       }
     }
   }

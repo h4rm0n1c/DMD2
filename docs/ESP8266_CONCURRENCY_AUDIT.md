@@ -143,7 +143,17 @@ The following sequence preserves public API and expected behavior while reducing
 2. Avoid heavy draw loops without delays/yields in user code.
 3. Prefer manual `beginNoTimer()+scanDisplay()` scheduling in `loop()` if Wi-Fi stability is critical.
 4. Increase inter-scan interval manually in user scheduling.
+5. For heavy redraw/text-scroll workloads with captive portal active, enable cooperative yield hooks (`DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD=1`).
 
 ---
 
 If you want, next step can be a minimal patch set that implements **Phase 1 only** behind compile-time flags so behavior remains backward compatible but safer by default on ESP8266.
+
+
+## Optional cooperative yield hook
+
+For ESP8266 deployments that combine heavy drawing with WiFiManager/captive portal activity, the library can insert cooperative yields in high-iteration loops by enabling `DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD=1`.
+
+- Macro: `DMD2_ESP8266_COOPERATIVE_YIELD()`
+- Default behavior: no-op on non-ESP8266 and when disabled.
+- Enabled behavior on ESP8266: invokes `yield()` in selected draw/text loops.

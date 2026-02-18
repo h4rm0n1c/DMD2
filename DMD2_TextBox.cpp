@@ -48,6 +48,7 @@ size_t DMD_TextBox::write(uint8_t character) {
 
   uint8_t char_width = dmd.charWidth(character) + 1;
   while((cur_x > 0 && cur_x + char_width >= this->width) || pending_newline) { // Need to wrap to new line
+    DMD2_ESP8266_COOPERATIVE_YIELD();
     if (height >= rowHeight*2) { // Can scroll
       cur_y += rowHeight;
       cur_x = 0;
@@ -88,10 +89,14 @@ void DMD_TextBox::scrollY(int scrollBy) {
   }
 
   cur_y += scrollBy;
-  while(cur_y < 0)
+  while(cur_y < 0) {
     cur_y += height;
-  while(cur_y > height)
+    DMD2_ESP8266_COOPERATIVE_YIELD();
+  }
+  while(cur_y > height) {
     cur_y -= height;
+    DMD2_ESP8266_COOPERATIVE_YIELD();
+  }
 }
 
 
@@ -108,10 +113,14 @@ void DMD_TextBox::scrollX(int scrollBy) {
   }
 
   cur_x += scrollBy;
-  while(cur_x < 0)
+  while(cur_x < 0) {
     cur_x += width;
-  while(cur_x > width)
+    DMD2_ESP8266_COOPERATIVE_YIELD();
+  }
+  while(cur_x > width) {
     cur_x -= width;
+    DMD2_ESP8266_COOPERATIVE_YIELD();
+  }
 }
 
 void DMD_TextBox::clear() {

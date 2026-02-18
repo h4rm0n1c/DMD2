@@ -28,6 +28,19 @@
 #include "Print.h"
 #include "SPI.h"
 
+#if defined(ESP8266)
+#ifndef DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD
+#define DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD 0
+#endif
+#if DMD2_ESP8266_ENABLE_COOPERATIVE_YIELD
+#define DMD2_ESP8266_COOPERATIVE_YIELD() do { yield(); } while(0)
+#else
+#define DMD2_ESP8266_COOPERATIVE_YIELD() do { } while(0)
+#endif
+#else
+#define DMD2_ESP8266_COOPERATIVE_YIELD() do { } while(0)
+#endif
+
 // Dimensions of a single display
 const unsigned int PANEL_WIDTH = 32;
 const unsigned int PANEL_HEIGHT = 16;
