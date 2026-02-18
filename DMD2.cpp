@@ -79,13 +79,7 @@ void BaseDMD::scanDisplay()
     bitmap + (scan_row + 12) * rowsize,
   };
 
-#if defined(SPI_HAS_TRANSACTION)
-  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
-#endif
   writeSPIData(rows, rowsize);
-#if defined(SPI_HAS_TRANSACTION)
-  SPI.endTransaction();
-#endif
 
   digitalWrite(pin_noe, LOW);
   digitalWrite(pin_sck, HIGH); // Latch DMD shift register output

@@ -91,9 +91,9 @@ The following sequence preserves public API and expected behavior while reducing
 
 ### Phase 2 (still compatibility-preserving)
 
-1. **Batch SPI transaction per scan**
-   - Use `SPI.beginTransaction()/endTransaction()` around full row block.
-   - Reduces bus contention and overhead.
+1. **Keep SPI path lean for shift-register-driven DMD panels**
+   - For this library's primary hardware model (DMD/P10 single-color panels via 16-pin DIL and 74xx logic), SPI is effectively a dedicated bitstream engine, not a multi-device shared peripheral.
+   - Prefer a fixed SPI setup and avoid per-scan transaction overhead in the hot path.
 
 2. **Fast GPIO path for default pins on ESP8266**
    - Keep existing public pin API, but when `default_pins==true`, use direct register writes for latch/A/B/noe toggles.
