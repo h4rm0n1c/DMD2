@@ -84,10 +84,12 @@ static bool unregister_running_dmd(BaseDMD *dmd);
 static void inline scan_running_dmds();
 
 #ifdef ESP8266
+// ISR path must remain IRAM-safe and minimal latency on ESP8266.
 static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
-static volatile uint8_t esp8266_isr_divider = 0;
-static volatile uint8_t esp8266_scan_pending = 0;
-static volatile uint32_t esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
+static volatile uint8_t esp8266_isr_divider = 0; // ISR-only divider counter.
+static volatile uint8_t esp8266_scan_pending = 0; // ISR increments, task context consumes.
+static volatile uint32_t esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS; // ISR reads for next arm.
+static volatile int running_dmd_len;
 #if DMD2_ESP8266_AUTO_SERVICE_HOOK
 static volatile uint8_t esp8266_service_queued = 0;
 static void esp8266_serviceAll_callback();
@@ -192,6 +194,12 @@ void BaseDMD::begin()
   timer0_isr_init();
   timer0_attachInterrupt(esp8266_ISR_wrapper);
   timer0_write(ESP.getCycleCount() + esp8266_timer_interval_ticks);
+#if DMD2_ESP8266_AUTO_SERVICE_HOOK
+  if(!esp8266_service_queued) {
+    esp8266_service_queued = 1;
+    schedule_function(esp8266_serviceAll_callback);
+  }
+#endif
 }
 
 void BaseDMD::end()
@@ -266,6 +274,7 @@ static bool unregister_running_dmd(BaseDMD *dmd)
 
 // ESP8266 ISR Wrapper
 #ifdef ESP8266
+// Keep ISR limited to counter updates and timer re-arm only.
 static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
 {
   esp8266_isr_divider++;
@@ -273,12 +282,6 @@ static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
     esp8266_isr_divider = 0;
     if(esp8266_scan_pending < 0xFF)
       esp8266_scan_pending++;
-#if DMD2_ESP8266_AUTO_SERVICE_HOOK
-    if(!esp8266_service_queued) {
-      esp8266_service_queued = 1;
-      schedule_function(esp8266_serviceAll_callback);
-    }
-#endif
   }
   timer0_write(ESP.getCycleCount() + esp8266_timer_interval_ticks);
 }
@@ -296,13 +299,13 @@ static void esp8266_serviceAll_callback()
   BaseDMD::serviceAll();
 
   noInterrupts();
-  bool has_pending = (esp8266_scan_pending > 0);
+  bool keep_running = (running_dmd_len > 0);
   bool can_queue = !esp8266_service_queued;
-  if(has_pending && can_queue)
+  if(keep_running && can_queue)
     esp8266_service_queued = 1;
   interrupts();
 
-  if(has_pending && can_queue)
+  if(keep_running && can_queue)
     schedule_function(esp8266_serviceAll_callback);
 }
 #endif
