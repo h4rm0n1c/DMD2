@@ -19,6 +19,9 @@
  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "DMD2.h"
+#ifdef ESP8266
+#include <Schedule.h>
+#endif
 
 /*
   Uncomment the following line if you don't want DMD library to touch
@@ -43,6 +46,10 @@
 
 #ifndef DMD2_ESP8266_MAX_SCANS_PER_SERVICE
 #define DMD2_ESP8266_MAX_SCANS_PER_SERVICE 2 // Prevent burst starvation in loop context.
+#endif
+
+#ifndef DMD2_ESP8266_AUTO_SERVICE_HOOK
+#define DMD2_ESP8266_AUTO_SERVICE_HOOK 1 // Schedule task-context refresh service automatically.
 #endif
 
 #ifndef DMD2_ESP8266_ADAPTIVE_INTERVAL
@@ -81,6 +88,10 @@ static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
 static volatile uint8_t esp8266_isr_divider = 0;
 static volatile uint8_t esp8266_scan_pending = 0;
 static volatile uint32_t esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
+#if DMD2_ESP8266_AUTO_SERVICE_HOOK
+static volatile uint8_t esp8266_service_queued = 0;
+static void esp8266_serviceAll_callback();
+#endif
 #endif
 
 #ifdef __AVR__
@@ -175,6 +186,9 @@ void BaseDMD::begin()
   esp8266_isr_divider = 0;
   esp8266_scan_pending = 0;
   esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
+#if DMD2_ESP8266_AUTO_SERVICE_HOOK
+  esp8266_service_queued = 0;
+#endif
   timer0_isr_init();
   timer0_attachInterrupt(esp8266_ISR_wrapper);
   timer0_write(ESP.getCycleCount() + esp8266_timer_interval_ticks);
@@ -188,6 +202,9 @@ void BaseDMD::end()
   if(!still_running)
   {
     timer0_detachInterrupt(); // timer0 disables itself when the CPU cycle count reaches its own value, hence ESP.getCycleCount()
+#if DMD2_ESP8266_AUTO_SERVICE_HOOK
+    esp8266_service_queued = 0;
+#endif
   }
   clearScreen();
   scanDisplay();
@@ -256,6 +273,12 @@ static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
     esp8266_isr_divider = 0;
     if(esp8266_scan_pending < 0xFF)
       esp8266_scan_pending++;
+#if DMD2_ESP8266_AUTO_SERVICE_HOOK
+    if(!esp8266_service_queued) {
+      esp8266_service_queued = 1;
+      schedule_function(esp8266_serviceAll_callback);
+    }
+#endif
   }
   timer0_write(ESP.getCycleCount() + esp8266_timer_interval_ticks);
 }
@@ -263,6 +286,27 @@ static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
 
 
 #ifdef ESP8266
+#if DMD2_ESP8266_AUTO_SERVICE_HOOK
+static void esp8266_serviceAll_callback()
+{
+  noInterrupts();
+  esp8266_service_queued = 0;
+  interrupts();
+
+  BaseDMD::serviceAll();
+
+  noInterrupts();
+  bool has_pending = (esp8266_scan_pending > 0);
+  bool can_queue = !esp8266_service_queued;
+  if(has_pending && can_queue)
+    esp8266_service_queued = 1;
+  interrupts();
+
+  if(has_pending && can_queue)
+    schedule_function(esp8266_serviceAll_callback);
+}
+#endif
+
 static void inline update_esp8266_refresh_interval(uint32_t scan_cycles)
 {
 #if DMD2_ESP8266_ADAPTIVE_INTERVAL

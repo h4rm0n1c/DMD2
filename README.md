@@ -63,7 +63,11 @@ For dedicated DMD/P10 deployments (single display chain, no SPI-CS sharing), you
 - Default is enabled (`1`) for dedicated DMD chains. Set `DMD2_ESP8266_DISABLE_OTHER_CS_CHECK=0` if your sketch relies on `setOtherCS()` arbitration behavior.
 
 
-For ESP8266 builds that defer scan work from ISR, call `BaseDMD::serviceAll()` frequently from `loop()` to service pending refresh ticks in normal task context.
+For ESP8266 builds that defer scan work from ISR:
+
+- Automatic task-context servicing is enabled by default (`DMD2_ESP8266_AUTO_SERVICE_HOOK=1`).
+- You can keep fully manual control by setting `DMD2_ESP8266_AUTO_SERVICE_HOOK=0` and calling `BaseDMD::serviceAll()` frequently from `loop()`.
+
 
 
 ### ESP8266 optional cooperative yield hook

@@ -86,6 +86,8 @@ The following sequence preserves public API and expected behavior while reducing
    - Add an ESP8266 scan divider (`DMD2_ESP8266_SCAN_DIVIDER`) so not every timer tick schedules a scan.
    - ISR only increments a pending counter and re-arms timer0.
    - `BaseDMD::serviceAll()` consumes pending scans in normal loop context with a cap (`DMD2_ESP8266_MAX_SCANS_PER_SERVICE`).
+   - Optional internal scheduler hook (`DMD2_ESP8266_AUTO_SERVICE_HOOK=1`, default) auto-runs service in task context.
+   - Set `DMD2_ESP8266_AUTO_SERVICE_HOOK=0` for fully manual `loop()` servicing.
 
 4. **Adaptive timer interval with fixed-mode escape hatch**
    - Use `DMD2_ESP8266_REFRESH_US` as floor and adjust interval from measured scan cycles.
