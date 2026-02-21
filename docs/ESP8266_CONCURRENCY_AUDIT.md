@@ -111,6 +111,7 @@ The following sequence preserves public API and expected behavior while reducing
 
 2. **Fast GPIO path for default pins on ESP8266**
    - Keep existing public pin API, but when `default_pins==true`, use direct register writes for latch/A/B/noe toggles.
+   - Default `DMD2_ESP8266_FASTGPIO=1`; set `0` to force legacy `digitalWrite()` path for troubleshooting.
    - Greatly reduces scan CPU cost.
 
 3. **Optional double-buffered swap discipline for ESP8266 users**

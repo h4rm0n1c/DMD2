@@ -23,6 +23,10 @@
 #ifndef DMD2_ESP8266_DISABLE_OTHER_CS_CHECK
 #define DMD2_ESP8266_DISABLE_OTHER_CS_CHECK 1
 #endif
+#ifndef DMD2_ESP8266_FASTGPIO
+#define DMD2_ESP8266_FASTGPIO 1
+#endif
+#include <eagle_soc.h>
 #endif
 
 // Port registers are same size as a pointer (16-bit on AVR, 32-bit on ARM)
@@ -95,23 +99,80 @@ void BaseDMD::scanDisplay()
 
   writeSPIData(rows, rowsize);
 
-  digitalWrite(pin_noe, LOW);
-  digitalWrite(pin_sck, HIGH); // Latch DMD shift register output
-  digitalWrite(pin_sck, LOW); // (Deliberately left as digitalWrite to ensure decent latching time)
-
   // Digital outputs A, B are a 2-bit selector output, set from the scan_row variable (loops over 0-3),
   // that determines which set of interleaved rows we are outputting during this pass.
   // BA 0 (00) = 1,5,9,13
   // BA 1 (01) = 2,6,10,14
   // BA 2 (10) = 3,7,11,15
   // BA 3 (11) = 4,8,12,16
+#ifdef ESP8266
+#if DMD2_ESP8266_FASTGPIO
+  if(default_pins) {
+    GPOC = (1U << pin_noe);
+    GPOS = (1U << pin_sck); // Latch DMD shift register output
+    GPOC = (1U << pin_sck);
+
+    uint32_t set_mask = 0;
+    uint32_t clear_mask = 0;
+    if(scan_row & 0x01)
+      set_mask |= (1U << pin_a);
+    else
+      clear_mask |= (1U << pin_a);
+    if(scan_row & 0x02)
+      set_mask |= (1U << pin_b);
+    else
+      clear_mask |= (1U << pin_b);
+
+    if(set_mask)
+      GPOS = set_mask;
+    if(clear_mask)
+      GPOC = clear_mask;
+  }
+  else {
+    digitalWrite(pin_noe, LOW);
+    digitalWrite(pin_sck, HIGH); // Latch DMD shift register output
+    digitalWrite(pin_sck, LOW); // (Deliberately left as digitalWrite to ensure decent latching time)
+    digitalWrite(pin_a, scan_row & 0x01);
+    digitalWrite(pin_b, scan_row & 0x02);
+  }
+#else
+  digitalWrite(pin_noe, LOW);
+  digitalWrite(pin_sck, HIGH); // Latch DMD shift register output
+  digitalWrite(pin_sck, LOW); // (Deliberately left as digitalWrite to ensure decent latching time)
   digitalWrite(pin_a, scan_row & 0x01);
   digitalWrite(pin_b, scan_row & 0x02);
+#endif
+#else
+  digitalWrite(pin_noe, LOW);
+  digitalWrite(pin_sck, HIGH); // Latch DMD shift register output
+  digitalWrite(pin_sck, LOW); // (Deliberately left as digitalWrite to ensure decent latching time)
+  digitalWrite(pin_a, scan_row & 0x01);
+  digitalWrite(pin_b, scan_row & 0x02);
+#endif
   scan_row = (scan_row + 1) % 4;
 
   // Output enable pin is either fixed on, or PWMed for a variable brightness display
   uint8_t current_brightness = brightness;
 #ifdef ESP8266
+#if DMD2_ESP8266_FASTGPIO
+  if(default_pins) {
+    if(current_brightness == 255) {
+      GPOS = (1U << pin_noe); // Fast path for full brightness.
+      pwm_active = false;
+    }
+    else if(current_brightness == 0) {
+      GPOC = (1U << pin_noe); // Fast path for display off.
+      pwm_active = false;
+    }
+    else if(brightness_changed || !pwm_active || pwm_brightness != current_brightness) {
+      analogWrite(pin_noe, current_brightness); // Reconfigure PWM only when brightness changes.
+      pwm_brightness = current_brightness;
+      pwm_active = true;
+      brightness_changed = false;
+    }
+  }
+  else
+#endif
   if(current_brightness == 255) {
     digitalWrite(pin_noe, HIGH); // Fast path for full brightness.
     pwm_active = false;
