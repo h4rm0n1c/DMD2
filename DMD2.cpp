@@ -99,6 +99,13 @@ void BaseDMD::scanDisplay()
 
   writeSPIData(rows, rowsize);
 
+#ifdef ESP8266
+#if DMD2_ESP8266_FASTGPIO
+  // GPIO16 is not controlled by GPOS/GPOC on ESP8266, so use fast GPIO only when all scan pins are normal GPIO.
+  bool use_fastgpio = default_pins && pin_noe != 16 && pin_sck != 16 && pin_a != 16 && pin_b != 16;
+#endif
+#endif
+
   // Digital outputs A, B are a 2-bit selector output, set from the scan_row variable (loops over 0-3),
   // that determines which set of interleaved rows we are outputting during this pass.
   // BA 0 (00) = 1,5,9,13
@@ -107,7 +114,7 @@ void BaseDMD::scanDisplay()
   // BA 3 (11) = 4,8,12,16
 #ifdef ESP8266
 #if DMD2_ESP8266_FASTGPIO
-  if(default_pins) {
+  if(use_fastgpio) {
     GPOC = (1U << pin_noe);
     GPOS = (1U << pin_sck); // Latch DMD shift register output
     GPOC = (1U << pin_sck);
@@ -155,7 +162,7 @@ void BaseDMD::scanDisplay()
   uint8_t current_brightness = brightness;
 #ifdef ESP8266
 #if DMD2_ESP8266_FASTGPIO
-  if(default_pins) {
+  if(use_fastgpio) {
     if(current_brightness == 255) {
       GPOS = (1U << pin_noe); // Fast path for full brightness.
       pwm_active = false;

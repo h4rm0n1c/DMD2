@@ -92,6 +92,6 @@ The deferred-scan scheduler can adapt timer interval based on measured scan dura
 
 For default ESP8266 DMD pin mappings, the library can use direct GPIO set/clear registers for NOE/SCK/A/B toggles in `scanDisplay()`:
 
-- `DMD2_ESP8266_FASTGPIO=1` (default) enables the fast register path on default pins.
+- `DMD2_ESP8266_FASTGPIO=1` (default) enables the fast register path when scan pins are normal GPIO.
 - Set `DMD2_ESP8266_FASTGPIO=0` to force `digitalWrite()` behavior for troubleshooting/custom verification.
-- Custom pin mappings automatically fall back to `digitalWrite()` even when fast GPIO is enabled.
+- Custom pin mappings, or any mapping that uses GPIO16 in scan control pins, automatically fall back to `digitalWrite()` even when fast GPIO is enabled.
