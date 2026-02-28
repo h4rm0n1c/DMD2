@@ -89,7 +89,7 @@ static void ICACHE_RAM_ATTR esp8266_ISR_wrapper();
 static volatile uint8_t esp8266_isr_divider = 0; // ISR-only divider counter.
 static volatile uint8_t esp8266_scan_pending = 0; // ISR increments, task context consumes.
 static volatile uint32_t esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS; // ISR reads for next arm.
-static volatile int running_dmd_len;
+static volatile uint8_t esp8266_timer_active = 0; // Task context toggles lifecycle state.
 #if DMD2_ESP8266_AUTO_SERVICE_HOOK
 static volatile uint8_t esp8266_service_queued = 0;
 static void esp8266_serviceAll_callback();
@@ -188,6 +188,7 @@ void BaseDMD::begin()
   esp8266_isr_divider = 0;
   esp8266_scan_pending = 0;
   esp8266_timer_interval_ticks = ESP8266_TIMER0_TICKS;
+  esp8266_timer_active = 1;
 #if DMD2_ESP8266_AUTO_SERVICE_HOOK
   esp8266_service_queued = 0;
 #endif
@@ -210,6 +211,7 @@ void BaseDMD::end()
   if(!still_running)
   {
     timer0_detachInterrupt(); // timer0 disables itself when the CPU cycle count reaches its own value, hence ESP.getCycleCount()
+    esp8266_timer_active = 0;
 #if DMD2_ESP8266_AUTO_SERVICE_HOOK
     esp8266_service_queued = 0;
 #endif
@@ -299,7 +301,7 @@ static void esp8266_serviceAll_callback()
   BaseDMD::serviceAll();
 
   noInterrupts();
-  bool keep_running = (running_dmd_len > 0);
+  bool keep_running = (esp8266_timer_active != 0);
   bool can_queue = !esp8266_service_queued;
   if(keep_running && can_queue)
     esp8266_service_queued = 1;
