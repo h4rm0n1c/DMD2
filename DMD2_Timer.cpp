@@ -33,7 +33,16 @@
 
 //#define NO_TIMERS
 
-#define ESP8266_TIMER0_TICKS microsecondsToClockCycles(250) // 250 microseconds between calls to scan_running_dmds seems to works better than 1000.
+#ifdef ESP8266
+/* ESP8266 scan interval in microseconds.
+   Override this in the sketch (or build flags) before compiling the library:
+   #define DMD2_ESP8266_SCAN_US 750
+*/
+#ifndef DMD2_ESP8266_SCAN_US
+#define DMD2_ESP8266_SCAN_US 500
+#endif
+static const uint32_t ESP8266_TIMER0_TICKS = microsecondsToClockCycles(DMD2_ESP8266_SCAN_US);
+#endif
 
 #ifdef NO_TIMERS
 
@@ -217,9 +226,7 @@ static bool unregister_running_dmd(BaseDMD *dmd)
 #ifdef ESP8266
 static void inline ICACHE_RAM_ATTR esp8266_ISR_wrapper()
 {
-  if(((int)0x40200000)) { //Make sure flash isn't being accessed.
-    scan_running_dmds();
-  }
+  scan_running_dmds();
   timer0_write(ESP.getCycleCount() + ESP8266_TIMER0_TICKS);
 }
 #endif

@@ -44,6 +44,14 @@ Thanks to @h4rm0n1c there is support for DMD2 on ESP8266 using the Arduino envir
 
 Freetronics is unable to guarantee support for DMD2 on ESP8266, but we will try and help if we can.
 
+For ESP8266 builds, the timer scan interval defaults to 500us. You can tune this at compile time by defining:
+
+```
+#define DMD2_ESP8266_SCAN_US 750
+```
+
+before the library is compiled (or by supplying the same macro via build flags).
+
 # About the Makefiles
 
 You'll notice the examples directory contains some files named `Makefile`. You can ignore these if you are using the Arduino IDE.
