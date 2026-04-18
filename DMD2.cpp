@@ -22,6 +22,10 @@
 // Port registers are same size as a pointer (16-bit on AVR, 32-bit on ARM)
 typedef intptr_t port_reg_t;
 
+#if defined(ESP8266) && defined(SPI_HAS_TRANSACTION)
+static const SPISettings dmd2_esp8266_spi_settings(4000000, MSBFIRST, SPI_MODE0);
+#endif
+
 SPIDMD::SPIDMD(byte panelsWide, byte panelsHigh)
 #ifdef ESP8266
   : BaseDMD(panelsWide, panelsHigh, 15, 16, 12, 0)
@@ -79,7 +83,13 @@ void BaseDMD::scanDisplay()
     bitmap + (scan_row + 12) * rowsize,
   };
 
+#if defined(ESP8266) && defined(SPI_HAS_TRANSACTION)
+  SPI.beginTransaction(dmd2_esp8266_spi_settings);
+#endif
   writeSPIData(rows, rowsize);
+#if defined(ESP8266) && defined(SPI_HAS_TRANSACTION)
+  SPI.endTransaction();
+#endif
 
   digitalWrite(pin_noe, LOW);
   digitalWrite(pin_sck, HIGH); // Latch DMD shift register output
